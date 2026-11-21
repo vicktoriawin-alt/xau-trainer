@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="XAU 42V">
+    <title>XAU/USD Тренажер (0.17 Лот | Вихід 0.36 | 42V)</title>
+
+    <!-- Іконка (Favicon) та логотип для робочого столу: Злиток золота + Блискавка -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230f172a'/%3E%3Cpolygon points='20,76 32,46 68,46 80,76' fill='%23f59e0b' stroke='%23fef08a' stroke-width='2.5'/%3E%3Cpolygon points='32,46 40,36 60,36 68,46' fill='%23fbbf24'/%3E%3Cpolygon points='54,12 34,54 50,54 44,88 70,44 52,44' fill='%2338bdf8' stroke='%23ffffff' stroke-width='2'/%3E%3C/svg%3E">
+    <link id="appIcon" rel="apple-touch-icon" href="">
+
+    <style>
+        :root {
+            --bg: #0f172a;
+            --panel: #1e293b;
+            --text: #f8fafc;
+            --muted: #94a3b8;
+            --green: #10b981;
+            --red: #ef4444;
+            --gold: #f59e0b;
+            --blue: #3b82f6;
+            --purple: #8b5cf6;
+        }
+        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background: var(--bg); color: var(--text); margin: 0; padding: 12px; }
+        .container { max-width: 920px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+        .header { display: flex; justify-content: space-between; align-items: center; background: var(--panel); padding: 12px 16px; border-radius: 10px; border-left: 4px solid var(--gold); gap: 10px; flex-wrap: wrap; }
+        .brand { display: flex; align-items: center; gap: 12px; }
+        .logo-box { width: 44px; height: 44px; flex-shrink: 0; filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.4)); }
+        .header h1 { font-size: 1.05rem; margin: 0; color: var(--gold); }
+        .header-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 10px; }
+        .card { background: var(--panel); padding: 12px; border-radius: 10px; position: relative; }
+        .card-title { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        .card-val { font-size: 1.2rem; font-weight: bold; margin-top: 4px; }
+        .card-sub { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+        .gold-text { color: var(--gold); }
+        .green-text { color: var(--green); }
+        .red-text { color: var(--red); }
+        .blue-text { color: #38bdf8; }
+        canvas { width: 100%; height: 270px; background: #0b1120; border-radius: 10px; display: block; border: 1px solid #334155; }
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .panel-box { background: var(--panel); padding: 14px; border-radius: 10px; display: flex; flex-direction: column; gap: 10px; }
+        .row { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+        input[type="number"] { background: #0f172a; border: 1px solid #334155; color: white; padding: 7px 8px; border-radius: 6px; width: 88px; font-weight: bold; }
+        button { border: none; padding: 10px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; color: white; transition: 0.15s; font-size: 0.88rem; }
+        button:active { transform: scale(0.98); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+        .btn-buy { background: var(--green); flex: 1; }
+        .btn-sell { background: var(--red); flex: 1; }
+        .btn-next { background: var(--blue); width: 100%; }
+        .btn-safe { background: var(--gold); color: #0f172a; }
+        .btn-session { background: #6366f1; }
+        .btn-reset { background: #475569; font-size: 0.78rem; padding: 6px 10px; }
+        .btn-guide { background: #0284c7; font-size: 0.78rem; padding: 6px 10px; }
+        .btn-sound { background: #334155; font-size: 0.78rem; padding: 6px 10px; }
+        .log { background: #0b1120; padding: 10px; border-radius: 8px; height: 145px; overflow-y: auto; font-size: 0.8rem; border: 1px solid #334155; }
+        .log div { padding: 4px 0; border-bottom: 1px solid #1e293b; }
+        .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; background: #334155; color: #38bdf8; }
+        .badge-ceil { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444; }
+        .checkbox-label { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; cursor: pointer; color: #e2e8f0; }
+
+        .guide-box { display: none; background: #1e293b; border: 1px solid #0284c7; border-radius: 10px; padding: 14px; font-size: 0.86rem; line-height: 1.55; }
+        .guide-box.open { display: block; }
+        .guide-box h3 { margin: 0 0 8px 0; color: #38bdf8; font-size: 0.98rem; }
+        .guide-box ol { margin: 0 0 12px 0; padding-left: 20px; }
+        .guide-box li { margin-bottom: 5px; }
+        .code-inline { background: #0f172a; padding: 2px 6px; border-radius: 4px; font-family: monospace; color: var(--gold); word-break: break-all; }
+
+        @media (max-width: 640px) { .controls { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <div class="brand">
+            <svg class="logo-box" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#fef08a"/>
+                        <stop offset="50%" stop-color="#f59e0b"/>
+                        <stop offset="100%" stop-color="#b45309"/>
+                    </linearGradient>
+                    <linearGradient id="boltGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#ffffff"/>
+                        <stop offset="100%" stop-color="#38bdf8"/>
+                    </linearGradient>
+                </defs>
+                <rect width="100" height="100" rx="22" fill="#0b1120" stroke="#334155" stroke-width="3"/>
+                <polygon points="16,78 28,48 72,48 84,78" fill="url(#goldGrad)" stroke="#fef08a" stroke-width="2"/>
+                <polygon points="28,48 38,38 62,38 72,48" fill="#fde047"/>
+                <polygon points="56,10 34,54 50,54 44,90 72,44 53,44" fill="url(#boltGrad)" stroke="#0f172a" stroke-width="2"/>
+            </svg>
+            <div>
+                <h1>XAU/USD ТРЕНАЖЕР (0.17 ➔ Вихід 0.36)</h1>
+                <small style="color: var(--muted)">Сесія #<span id="sessionNum">1</span> | Пакет: <span id="tradeCount">0</span>/3 | <span id="ceilingBadge" class="badge">Стеля: 5.00 лот</span></small>
+            </div>
+        </div>
+        <div class="header-btns">
+            <button class="btn-sound" id="soundBtn" onclick="toggleSound()">🔊 Звук: ВКЛ</button>
+            <button class="btn-guide" onclick="toggleGuide()">📖 Інструкція</button>
+            <button class="btn-reset" onclick="hardReset()">Скинути $2,000</button>
+        </div>
+    </div>
+
+    <!-- Вбудована інструкція -->
+    <div class="guide-box" id="guideBox">
+        <h3>🌐 1. Як розмістити тренажер як сайт на GitHub Pages</h3>
+        <ol>
+            <li>Відкрийте свій репозиторій у додатку або на сайті <b>GitHub</b>.</li>
+            <li>Натисніть <b>+ (Add file ➔ Create new file)</b> і впишіть назву: <span class="code-inline">index.html</span></li>
+            <li>Вставте весь код цього файлу та натисніть <b>Commit changes</b>.</li>
+            <li>Перейдіть у <b>Settings ➔ Pages</b> ➔ виберіть гілку <b>main</b> і натисніть <b>Save</b>. За 1–2 хвилини сайт запрацює за вашим посиланням <span class="code-inline">https://ваш-логін.github.io/назва-репозиторію/</span>.</li>
+        </ol>
+
+        <h3>📱 2. Як вивести логотип (злиток із блискавкою) на робочий стіл телефону</h3>
+        <ol>
+            <li>Відкрийте посилання сайту в <b>Google Chrome</b> (Android) або <b>Safari</b> (iPhone).</li>
+            <li>Натисніть меню браузера (<b>⋮</b> або <b>Поділитися</b>) ➔ <b>«Додати на головний екран»</b>.</li>
+            <li>На робочому столі з'явиться іконка із золотим злитком та блискавкою.</li>
+        </ol>
+
+        <h3>⚙️ 3. Закладена математика (База 0.17 / Вихід 0.36 / Стеля 5.00)</h3>
+        <ol>
+            <li><b>Базова позиція 0.17 лоту:</b> Розрахована на стартовий депозит <b>$2,000</b> та масштабується динамічним відсотком ризику (<b>3.5%</b> до $5k ➔ <b>2.5%</b> до $15k ➔ <b>1.5%</b> понад $15k) до <b>стелі ліквідності 5.00 лотів</b>.</li>
+            <li><b>Вихід 0.36 (36% фіксація):</b> При першому імпульсі в прибуток <b>36% обсягу</b> позиції (на базі 0.17 це <b>0.06 лоту</b>) миттєво закривається на короткому тейку <b>1:1.2</b>, створюючи грошову подушку, а решта <b>64%</b> (0.11 лоту) тягнеться до основного тейку <b>1:2.2</b>.</li>
+            <li><b>Захист серії стопів та 42V:</b> 1-й стоп ріже наступний лот удвічі (<b>×0.5</b>), 2-й — до чверті (<b>×0.25</b>), а 3-й стоп підряд або просадка <b>-30%</b> (42V) блокують торгівлю зі звуковим сигналом.</li>
+        </ol>
+        <button class="btn-reset" onclick="toggleGuide()" style="width: 100%;">Згорнути інструкцію ▲</button>
+    </div>
+
+    <div class="stats-grid">
+        <div class="card">
+            <div class="card-title">Робочий Баланс</div>
+            <div class="card-val" id="balance">$2,000.00</div>
+            <div class="card-sub">Старт сесії: <span id="startBalDisplay">$2,000.00</span></div>
+        </div>
+        <div class="card">
+            <div class="card-title">🔒 Сейф (Прибуток)</div>
+            <div class="card-val gold-text" id="safeBalance">$0.00</div>
+            <div class="card-sub">Захищений капітал</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Ціна XAU/USD <span id="priceSource" class="badge">LIVE</span></div>
+            <div class="card-val" id="currentPrice">2650.00</div>
+            <div class="card-sub"><a href="javascript:fetchGoldPrice(true)" style="color:#38bdf8; text-decoration:none;">🔄 Оновити котирування</a></div>
+        </div>
+        <div class="card">
+            <div class="card-title">Стопи / Просадка 42V</div>
+            <div class="card-val"><span id="stopsCount" class="red-text">0</span>/3 | <span id="ddPercent">0.0%</span></div>
+            <div class="card-sub" id="riskModeText">Динамічний ризик: 3.5%</div>
+        </div>
+    </div>
+
+    <canvas id="chart"></canvas>
+
+    <div class="controls">
+        <div class="panel-box">
+            <div class="row">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="autoLotCheck" checked onchange="recalcAutoLot()">
+                    <span>Авто-лот (база <b>0.17</b> | вихід <b>0.36</b>)</span>
+                </label>
+            </div>
+            <div class="row">
+                <div>
+                    <label style="font-size:0.8rem; color:var(--muted);">Лот (XAU):</label><br>
+                    <input type="number" id="lotSize" value="0.17" step="0.01" min="0.01" oninput="onManualLotChange()">
+                </div>
+                <div>
+                    <label style="font-size:0.8rem; color:var(--muted);">Вихід 0.36 / Зал.:</label><br>
+                    <div id="splitPreview" style="font-size:0.85rem; font-weight:bold; color:#38bdf8; padding-top:6px;">0.06 / 0.11</div>
+                </div>
+                <div>
+                    <label style="font-size:0.8rem; color:var(--muted);">Ризик ($):</label><br>
+                    <input type="number" id="riskAmount" value="70" step="5" min="5">
+                </div>
+            </div>
+            <div class="row">
+                <button class="btn-buy" id="btnBuy" onclick="executeTrade('BUY')">🟢 BUY (Лонг)</button>
+                <button class="btn-sell" id="btnSell" onclick="executeTrade('SELL')">🔴 SELL (Шорт)</button>
+            </div>
+            <button class="btn-next" onclick="nextCandle()">🕯️ Наступна свічка (Ринок)</button>
+        </div>
+
+        <div class="panel-box">
+            <div class="row">
+                <span>Вивід у Сейф:</span>
+                <input type="number" id="safeInput" value="100" step="50">
+                <button class="btn-safe" onclick="moveToSafe()">У Сейф</button>
+            </div>
+            <div class="row">
+                <span style="font-size: 0.85rem; color: var(--muted);">Завершити день і зберегти баланс:</span>
+                <button class="btn-session" onclick="newSession()">Нова сесія ➔</button>
+            </div>
+            <div style="font-size: 0.76rem; color: var(--muted); line-height: 1.4;">
+                • <b>Вихід 0.36:</b> 36% лоту фіксується на 1:1.2, решта 64% тягнеться на 1:2.2.<br>
+                • <b>Стеля 5.00 лот:</b> вище стелі вмикається штраф проковзування.
+            </div>
+        </div>
+    </div>
+
+    <div class="log" id="logBox"></div>
+</div>
+
+<script>
+    const BASE_BALANCE = 2000;
+    const BASE_LOT = 0.17;
+    const EXIT_RATIO = 0.36; // Вихід 0.36 (36% фіксація першої частини лота)
+    const LIQUIDITY_CEILING = 5.00; // Стеля ліквідності (макс. лот)
+
+    // Генерація PNG-іконки злитка з блискавкою для робочого столу
+    (function generateDesktopIcon() {
+        const c = document.createElement('canvas');
+        c.width = 192;
+        c.height = 192;
+        const ctx = c.getContext('2d');
+
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.roundRect(0, 0, 192, 192, 40);
+        ctx.fill();
+
+        const goldGrad = ctx.createLinearGradient(30, 90, 162, 150);
+        goldGrad.addColorStop(0, '#fef08a');
+        goldGrad.addColorStop(0.5, '#f59e0b');
+        goldGrad.addColorStop(1, '#b45309');
+        ctx.fillStyle = goldGrad;
+        ctx.beginPath();
+        ctx.moveTo(30, 150);
+        ctx.lineTo(54, 92);
+        ctx.lineTo(138, 92);
+        ctx.lineTo(162, 150);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#fde047';
+        ctx.beginPath();
+        ctx.moveTo(54, 92);
+        ctx.lineTo(72, 72);
+        ctx.lineTo(120, 72);
+        ctx.lineTo(138, 92);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#38bdf8';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(108, 20);
+        ctx.lineTo(66, 102);
+        ctx.lineTo(96, 102);
+        ctx.lineTo(84, 172);
+        ctx.lineTo(138, 84);
+        ctx.lineTo(102, 84);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        document.getElementById('appIcon').href = c.toDataURL('image/png');
+    })();
+
+    // Звуковий синтезатор (Web Audio API)
+    let soundEnabled = true;
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    function playTone(type) {
+        if (!soundEnabled) return;
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const now = audioCtx.currentTime;
+
+        if (type === 'win') {
+            [523.25, 659.25, 783.99].forEach((freq, idx) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+                gain.gain.setValueAtTime(0.15, now + idx * 0.08);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.25);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now + idx * 0.08);
+                osc.stop(now + idx * 0.08 + 0.25);
+            });
+        } else if (type === 'partial') {
+            [523.25, 659.25].forEach((freq, idx) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, now + idx * 0.09);
+                gain.gain.setValueAtTime(0.14, now + idx * 0.09);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.09 + 0.22);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now + idx * 0.09);
+                osc.stop(now + idx * 0.09 + 0.22);
+            });
+        } else if (type === 'loss') {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(190, now);
+            osc.frequency.linearRampToValueAtTime(130, now + 0.28);
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.3);
+        } else if (type === 'alarm') {
+            [440, 311.13, 440, 277.18].forEach((freq, idx) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(freq, now + idx * 0.14);
+                gain.gain.setValueAtTime(0.18, now + idx * 0.14);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.14 + 0.13);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now + idx * 0.14);
+                osc.stop(now + idx * 0.14 + 0.13);
+            });
+        }
+    }
+
+    function toggleSound() {
+        soundEnabled = !soundEnabled;
+        document.getElementById('soundBtn').textContent = soundEnabled ? '🔊 Звук: ВКЛ' : '🔇 Звук: ВИКЛ';
+    }
+
+    let state = {
+        balance: BASE_BALANCE,
+        sessionStartBalance: BASE_BALANCE,
+        safe: 0,
+        session: 1,
+        tradesInSession: 0,
+        consecutiveStops: 0,
+        locked: false,
+        candles: []
+    };
+
+    function toggleGuide() {
+        document.getElementById('guideBox').classList.toggle('open');
+    }
+
+    // Динамічний відсоток ризику залежно від балансу
+    function getDynamicRiskPercent(bal) {
+        if (bal < 5000) return 3.5;
+        if (bal < 15000) return 2.5;
+        return 1.5;
+    }
+
+    // Множник безпеки після серії стопів
+    function getStopSeriesMultiplier(stops) {
+        if (stops === 1) return 0.5;
+        if (stops >= 2) return 0.25;
+        return 1.0;
+    }
+
+    function updateSplitPreview(lot) {
+        const part1 = +(lot * EXIT_RATIO).toFixed(2);
+        const part2 = +Math.max(0, lot - part1).toFixed(2);
+        document.getElementById('splitPreview').textContent = `${part1.toFixed(2)} / ${part2.toFixed(2)}`;
+    }
+
+    function onManualLotChange() {
+        const lot = parseFloat(document.getElementById('lotSize').value) || BASE_LOT;
+        updateSplitPreview(lot);
+        const badge = document.getElementById('ceilingBadge');
+        if (lot > LIQUIDITY_CEILING) {
+            badge.className = 'badge badge-ceil';
+            badge.textContent = `⚠️ ПЕРЕВИЩЕНО СТЕЛЮ (${LIQUIDITY_CEILING})`;
+        } else {
+            badge.className = 'badge';
+            badge.textContent = `Стеля: ${LIQUIDITY_CEILING.toFixed(2)} лот`;
+        }
+    }
+
+    // Автоматичний перерахунок лоту від бази 0.17 при $2,000 + динамічний % + захист серії стопів
+    function recalcAutoLot() {
+        const isAuto = document.getElementById('autoLotCheck').checked;
+        const lotInput = document.getElementById('lotSize');
+        const riskInput = document.getElementById('riskAmount');
+
+        const baseRiskPct = getDynamicRiskPercent(state.balance);
+        const seriesMult = getStopSeriesMultiplier(state.consecutiveStops);
+        const effectiveRiskPct = +(baseRiskPct * seriesMult).toFixed(2);
+
+        document.getElementById('riskModeText').textContent =
+            seriesMult < 1
+            ? `Ризик: ${effectiveRiskPct}% (Захист ×${seriesMult})`
+            : `Динамічний ризик: ${effectiveRiskPct}%`;
+
+        if (!isAuto) {
+            lotInput.readOnly = false;
+            riskInput.readOnly = false;
+            return;
+        }
+
+        lotInput.readOnly = true;
+        riskInput.readOnly = true;
+
+        // Масштабування від 0.17 лоту на $2,000 з урахуванням динамічного відсотка та серії стопів
+        const scaleFactor = (state.balance / BASE_BALANCE) * (effectiveRiskPct / 3.5);
+        let rawLot = BASE_LOT * scaleFactor;
+        let cappedLot = Math.min(LIQUIDITY_CEILING, Math.max(0.01, +rawLot.toFixed(2)));
+        let riskDollars = Math.max(5, +(state.balance * (effectiveRiskPct / 100)).toFixed(2));
+
+        lotInput.value = cappedLot.toFixed(2);
+        riskInput.value = riskDollars.toFixed(2);
+        updateSplitPreview(cappedLot);
+
+        const badge = document.getElementById('ceilingBadge');
+        if (rawLot >= LIQUIDITY_CEILING) {
+            badge.className = 'badge badge-ceil';
+            badge.textContent = `⚠️ СТЕЛЯ ЛІКВІДНОСТІ (${LIQUIDITY_CEILING.toFixed(2)})`;
+        } else {
+            badge.className = 'badge';
+            badge.textContent = `Стеля: ${LIQUIDITY_CEILING.toFixed(2)} лот`;
+        }
+    }
+
+    // Підтягування реальної ціни золота (XAU/USD)
+    async function fetchGoldPrice(manual = false) {
+        const badge = document.getElementById('priceSource');
+        try {
+            badge.textContent = 'ОНОВЛЕННЯ...';
+            const res = await fetch('https://api.gold-api.com/price/XAU');
+            if (!res.ok) throw new Error('Network error');
+            const data = await res.json();
+            if (data && data.price) {
+                const livePrice = +parseFloat(data.price).toFixed(2);
+                initCandles(livePrice);
+                badge.textContent = 'LIVE XAU';
+                badge.style.color = '#10b981';
+                if (manual) log(`🌐 Підтягнуто реальну ціну золота: $${livePrice}`, '#38bdf8');
+                updateUI();
+                return;
+            }
+        } catch (e) {
+            badge.textContent = 'ОФЛАЙН';
+            badge.style.color = '#f59e0b';
+            if (manual) log(`⚠️ Немає зв'язку з біржею. Працюємо на локальному генераторі свічок.`, 'var(--gold)');
+        }
+    }
+
+    function initCandles(startPrice = 2650.00) {
+        let price = startPrice;
+        state.candles = [];
+        for (let i = 0; i < 60; i++) {
+            let open = price;
+            let change = (Math.random() - 0.495) * 4.5;
+            let close = +(open + change).toFixed(2);
+            let high = +(Math.max(open, close) + Math.random() * 2.2).toFixed(2);
+            let low = +(Math.min(open, close) - Math.random() * 2.2).toFixed(2);
+            state.candles.push({ open, high, low, close });
+            price = close;
+        }
+        state.candles[state.candles.length - 1].close = startPrice;
+    }
+
+    function calcEMA(period) {
+        let k = 2 / (period + 1);
+        let ema = [state.candles.close];
+        for (let i = 1; i < state.candles.length; i++) {
+            ema.push(state.candles[i].close * k + ema[i - 1] * (1 - k));
+        }
+        return ema;
+    }
+
+    function drawChart() {
+        const canvas = document.getElementById('chart');
+        const ctx = canvas.getContext('2d');
+        canvas.width = canvas.clientWidth;
+        canvas.height = canvas.clientHeight;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const data = state.candles.slice(-45);
+        const ema20 = calcEMA(20).slice(-45);
+        const ema50 = calcEMA(50).slice(-45);
+
+        let min = Math.min(...data.map(c => c.low)) - 1.5;
+        let max = Math.max(...data.map(c => c.high)) + 1.5;
+        let range = max - min || 1;
+
+        const w = canvas.width / data.length;
+        const getY = p => canvas.height - ((p - min) / range) * (canvas.height - 20) - 10;
+
+        data.forEach((c, i) => {
+            let x = i * w + w / 2;
+            ctx.strokeStyle = c.close >= c.open ? '#10b981' : '#ef4444';
+            ctx.fillStyle = ctx.strokeStyle;
+            ctx.beginPath();
+            ctx.moveTo(x, getY(c.high));
+            ctx.lineTo(x, getY(c.low));
+            ctx.stroke();
+
+            let top = getY(Math.max(c.open, c.close));
+            let bottom = getY(Math.min(c.open, c.close));
+            ctx.fillRect(x - w * 0.3, top, w * 0.6, Math.max(bottom - top, 2));
+        });
+
+        const drawLine = (arr, color) => {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            arr.forEach((val, i) => {
+                let x = i * w + w / 2;
+                if (i === 0) ctx.moveTo(x, getY(val));
+                else ctx.lineTo(x, getY(val));
+            });
+            ctx.stroke();
+        };
+        drawLine(ema20, '#3b82f6');
+        drawLine(ema50, '#f59e0b');
+    }
+
+    function nextCandle() {
+        let last = state.candles[state.candles.length - 1].close;
+        let change = (Math.random() - 0.495) * 5.5;
+        let close = +(last + change).toFixed(2);
+        let high = +(Math.max(last, close) + Math.random() * 2.5).toFixed(2);
+        let low = +(Math.min(last, close) - Math.random() * 2.5).toFixed(2);
+        state.candles.push({ open: last, high, low, close });
+        if (state.candles.length > 100) state.candles.shift();
+        updateUI();
+        return close - last;
+    }
+
+    function executeTrade(side) {
+        if (state.locked) return;
+
+        const lot = parseFloat(document.getElementById('lotSize').value) || BASE_LOT;
+        const risk = parseFloat(document.getElementById('riskAmount').value) || 70;
+        const move = nextCandle();
+        const absMove = Math.abs(move);
+
+        // Комісія + спред на золото (~$18 за 1.00 лот => ~$3.06 на 0.17 лоту)
+        let spreadCost = +(lot * 18).toFixed(2);
+        let slippagePenalty = 0;
+
+        // Штраф за перевищення стелі ліквідності
+        if (lot > LIQUIDITY_CEILING) {
+            slippagePenalty = +((lot - LIQUIDITY_CEILING) * 45).toFixed(2);
+        }
+
+        const isCorrectDirection = (side === 'BUY' && move > 0) || (side === 'SELL' && move < 0);
+        const part1Lot = +(lot * EXIT_RATIO).toFixed(2);
+        const part2Lot = +Math.max(0, lot - part1Lot).toFixed(2);
+
+        let pnl = 0;
+
+        if (isCorrectDirection) {
+            if (absMove >= 2.2) {
+                // Повний тейк: 36% закрито по 1:1.2, решта 64% по 1:2.2
+                const profit1 = risk * EXIT_RATIO * 1.2;
+                const profit2 = risk * (1 - EXIT_RATIO) * 2.2;
+                pnl = +(profit1 + profit2 - spreadCost - slippagePenalty).toFixed(2);
+                state.consecutiveStops = 0;
+                playTone('win');
+                log(`✅ ${side} (${lot} лот) | Повний тейк (0.36 @ 1:1.2 + 0.64 @ 1:2.2): +$${pnl}`, 'var(--green)');
+            } else {
+                // Частковий вихід 0.36: перші 36% зафіксовані на імпульсі, залишок 64% вибило в беззбиток
+                const profit1 = risk * EXIT_RATIO * 1.2;
+                pnl = +(profit1 - spreadCost - slippagePenalty).toFixed(2);
+                state.consecutiveStops = 0;
+                playTone('partial');
+                log(`🛡️ ${side} (${lot} лот) | Вихід 0.36 (${part1Lot} лот) зафіксовано, ${part2Lot} у Б/З: +$${pnl}`, '#38bdf8');
+            }
+        } else {
+            // Стоп-лос
+            pnl = +(-risk - spreadCost - slippagePenalty).toFixed(2);
+            state.consecutiveStops++;
+            playTone('loss');
+            log(`❌ ${side} (${lot} лот) | Стоп ${state.consecutiveStops}/3: -$${Math.abs(pnl).toFixed(2)}`, 'var(--red)');
+        }
+
+        if (slippagePenalty > 0) {
+            log(`⚠️ Проковзування за перевищення стелі 5.00 лот: -$${slippagePenalty}`, 'var(--gold)');
+        }
+
+        state.balance = +(state.balance + pnl).toFixed(2);
+        state.tradesInSession++;
+
+        checkRules();
+        recalcAutoLot();
+        saveState();
+        updateUI();
+    }
+
+    function checkRules() {
+        let drawdown = ((state.sessionStartBalance - state.balance) / state.sessionStartBalance) * 100;
+        if (state.consecutiveStops >= 3) {
+            state.locked = true;
+            playTone('alarm');
+            log(`🛑 СТОП-КРАН: 3 стопи підряд! Торгівля зупинена до нової сесії.`, 'var(--red)');
+        } else if (drawdown >= 30) {
+            state.locked = true;
+            playTone('alarm');
+            log(`⚡ ПРАВИЛО 42V: Просадка ${drawdown.toFixed(1)}% (ліміт 30%). Контролер відключив живлення!`, 'var(--gold)');
+        }
+    }
+
+    function moveToSafe() {
+        let amt = parseFloat(document.getElementById('safeInput').value) || 0;
+        if (amt <= 0 || amt > state.balance) {
+            log(`⚠️ Недостатньо коштів на робочому балансі для переказу в Сейф.`, 'var(--gold)');
+            return;
+        }
+        state.balance = +(state.balance - amt).toFixed(2);
+        state.safe = +(state.safe + amt).toFixed(2);
+        playTone('partial');
+        log(`🔒 Переведено у Сейф: $${amt.toFixed(2)}`, 'var(--gold)');
+        checkRules();
+        recalcAutoLot();
+        saveState();
+        updateUI();
+    }
+
+    function newSession() {
+        state.session++;
+        state.sessionStartBalance = state.balance;
+        state.tradesInSession = 0;
+        state.consecutiveStops = 0;
+        state.locked = false;
+        log(`🌅 Сесія #${state.session} розпочата. Ранковий баланс: $${state.balance.toFixed(2)}`, '#6366f1');
+        fetchGoldPrice(false);
+        recalcAutoLot();
+        saveState();
+        updateUI();
+    }
+
+    function hardReset() {
+        localStorage.removeItem('xau_trainer_017_036');
+        state = {
+            balance: BASE_BALANCE,
+            sessionStartBalance: BASE_BALANCE,
+            safe: 0,
+            session: 1,
+            tradesInSession: 0,
+            consecutiveStops: 0,
+            locked: false,
+            candles: []
+        };
+        initCandles(2650.00);
+        document.getElementById('logBox').innerHTML = '';
+        log(`🔄 Тренажер скинуто до стартових $2,000.00 (База 0.17 / Вихід 0.36)`, 'var(--muted)');
+        fetchGoldPrice(false);
+        recalcAutoLot();
+        updateUI();
+    }
+
+    function log(msg, color) {
+        const box = document.getElementById('logBox');
+        const div = document.createElement('div');
+        div.style.color = color;
+        div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        box.prepend(div);
+    }
+
+    function saveState() {
+        localStorage.setItem('xau_trainer_017_036', JSON.stringify(state));
+    }
+
+    function updateUI() {
+        document.getElementById('balance').textContent = `$${state.balance.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+        document.getElementById('startBalDisplay').textContent = `$${state.sessionStartBalance.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+        document.getElementById('safeBalance').textContent = `$${state.safe.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+        document.getElementById('sessionNum').textContent = state.session;
+        document.getElementById('tradeCount').textContent = state.tradesInSession;
+        document.getElementById('stopsCount').textContent = state.consecutiveStops;
+
+        let lastPrice = state.candles[state.candles.length - 1]?.close || 2650;
+        document.getElementById('currentPrice').textContent = lastPrice.toFixed(2);
+
+        let dd = Math.max(0, ((state.sessionStartBalance - state.balance) / state.sessionStartBalance) * 100);
+        document.getElementById('ddPercent').textContent = `${dd.toFixed(1)}%`;
+
+        document.getElementById('btnBuy').disabled = state.locked;
+        document.getElementById('btnSell').disabled = state.locked;
+        drawChart();
+    }
+
+    const saved = localStorage.getItem('xau_trainer_017_036');
+    if (saved) {
+        state = JSON.parse(saved);
+        if (!state.candles || state.candles.length === 0) initCandles(2650.00);
+        log(`📂 Відновлено сесію #${state.session} (База 0.17 / Вихід 0.36)`, 'var(--muted)');
+    } else {
+        initCandles(2650.00);
+        log(`🚀 Тренажер готовий. Баланс: $2,000.00 | Позиція: 0.17 | Вихід: 0.36`, 'var(--green)');
+        fetchGoldPrice(false);
+    }
+    recalcAutoLot();
+    updateUI();
+</script>
+
+</body>
+</html>
